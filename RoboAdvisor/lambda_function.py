@@ -1,3 +1,104 @@
+### Required Libraries ###
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
+### Functionality Helper Functions ###
+def parse_int(n):
+    """
+    Securely converts a non-integer value to integer.
+    """
+    try:
+        return int(n)
+    except ValueError:
+        return float("nan")
+
+
+def build_validation_result(is_valid, violated_slot, message_content):
+    """
+    Define a result message structured as Lex response.
+    """
+    if message_content is None:
+        return {"isValid": is_valid, "violatedSlot": violated_slot}
+
+    return {
+        "isValid": is_valid,
+        "violatedSlot": violated_slot,
+        "message": {"contentType": "PlainText", "content": message_content},
+    }
+
+
+### Dialog Actions Helper Functions ###
+def get_slots(intent_request):
+    """
+    Fetch all the slots and their values from the current intent.
+    """
+    return intent_request["currentIntent"]["slots"]
+
+
+def elicit_slot(session_attributes, intent_name, slots, slot_to_elicit, message):
+    """
+    Defines an elicit slot type response.
+    """
+
+    return {
+        "sessionAttributes": session_attributes,
+        "dialogAction": {
+            "type": "ElicitSlot",
+            "intentName": intent_name,
+            "slots": slots,
+            "slotToElicit": slot_to_elicit,
+            "message": message,
+        },
+    }
+
+
+def delegate(session_attributes, slots):
+    """
+    Defines a delegate slot type response.
+    """
+
+    return {
+        "sessionAttributes": session_attributes,
+        "dialogAction": {"type": "Delegate", "slots": slots},
+    }
+
+
+def close(session_attributes, fulfillment_state, message):
+    """
+    Defines a close slot type response.
+    """
+
+    response = {
+        "sessionAttributes": session_attributes,
+        "dialogAction": {
+            "type": "Close",
+            "fulfillmentState": fulfillment_state,
+            "message": message,
+        },
+    }
+
+    return response
+
+
+### Intents Handlers ###
+def recommend_portfolio(intent_request):
+    """
+    Performs dialog management and fulfillment for recommending a portfolio.
+    """
+
+    first_name = get_slots(intent_request)["firstName"]
+    age = get_slots(intent_request)["age"]
+    investment_amount = get_slots(intent_request)["investmentAmount"]
+    risk_level = get_slots(intent_request)["riskLevel"]
+    source = intent_request["invocationSource"]
+    
+    # Get the initial investment recommendation
+    ### YOUR FINAL INVESTMENT RECOMMENDATION CODE STARTS HERE ###
+    if source == "FulfillmentCodeHook":
+        initial_recommendation = ""
+        if risk_level == "None":
+            initial_recommendation = "100% bonds (AGG), 0% equities (SPY)"
+        elif risk_level == "Very Low":
             initial_recommendation = "80% bonds (AGG), 20% equities (SPY)"
         elif risk_level == "Low":
             initial_recommendation = "60% bonds (AGG), 40% equities (SPY)"
@@ -15,12 +116,35 @@
         # for the first violation detected.
         
         ### YOUR DATA VALIDATION CODE STARTS HERE ###
-        if age is not None and age == 50:
-            #if (age < 1) or (age > 65):
-            return {'error': 'You are not the recommended age'}
-        #if investment_amount is not None:
-        #    if (investment_amount < 5000):
-        #        print ("You must invest a minimum of $5000.00")
+        if age is not None:
+            if (int(age) < 1) or (int(age) > 65):
+                return elicit_slot (
+                    intent_request["sessionAttributes"],
+                    'RecommedPortfolio',
+                    {"investmentAmount": investment_amount,
+                     "firstName": first_name
+                    },
+                    'age',
+                    {
+                        'contentType':'PlainText',
+                        'content':'You are not the recommended age for retirement.  Please try again: '
+                    }
+                    )
+        if investment_amount is not None:
+            if (int(investment_amount) < 5000):
+                return elicit_slot (
+                    intent_request["sessionAttributes"],
+                    'RecommedPortfolio',
+                    {"firstName": first_name,
+                     "age": age
+                    },
+                    'investmentAmount',
+                    {
+                        'contentType':'PlainText',
+                        'content':'The minimum investment is $5000 for a retirement portfolio.  Please input a valid amount: ' 
+                    }
+                    )
+        
         ### YOUR DATA VALIDATION CODE ENDS HERE ###
 
         
